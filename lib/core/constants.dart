@@ -14,3 +14,8 @@ class AppSpacing {
   static const double cardRadius = 32.0;
   static const double buttonRadius = 20.0;
 }
+
+class AppConfig {
+  // Use 10.0.2.2 to talk to your XAMPP from the Android Emulator
+  static const String baseUrl = 'http://10.0.2.2/phpBackend'; 
+}

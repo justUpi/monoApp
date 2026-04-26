@@ -1,8 +1,18 @@
 import 'package:flutter/material.dart';
 import 'core/theme.dart';
 import 'screens/home_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-void main() => runApp(const MonoApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Supabase.initialize(
+    url: 'https://hhcgdgbipqmusqvunbbj.supabase.co',
+    anonKey: 'sb_publishable_gBCMjne20PFtrxkkk0Mw3w_adqHfOTZ',
+  );
+
+  runApp(const MonoApp());
+}
 
 class MonoApp extends StatelessWidget {
   const MonoApp({super.key});
@@ -16,3 +26,4 @@ class MonoApp extends StatelessWidget {
     );
   }
 }
+
