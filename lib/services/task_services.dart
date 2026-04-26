@@ -28,12 +28,14 @@ class TaskService {
   }
 
   Future<List<String>> fetchTasks() async {
-  try {
-    final List<dynamic> response = await _supabase.from('tasks').select('title');
-    return response.map((task) => task['title'] as String).toList();
-  } catch (e) {
-    // Re-throw so the UI can catch it
-    throw Exception("Check your internet connection."); 
+    try {
+      final List<dynamic> response = await _supabase
+          .from('tasks')
+          .select('title');
+      return response.map((task) => task['title'] as String).toList();
+    } catch (e) {
+      // Re-throw so the UI can catch it
+      throw Exception("Check your internet connection.");
+    }
   }
-}
 }

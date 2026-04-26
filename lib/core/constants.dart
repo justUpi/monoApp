@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 
 class AppColors {
@@ -16,8 +15,7 @@ class AppSpacing {
 }
 
 class AppConfig {
-
   static const String supabaseUrl = 'https://hhcgdgbipqmusqvunbbj.supabase.co';
-  static const String supabaseAnonKey = 'sb_publishable_gBCMjne20PFtrxkkk0Mw3w_adqHfOTZ';
-
+  static const String supabaseAnonKey =
+      'sb_publishable_gBCMjne20PFtrxkkk0Mw3w_adqHfOTZ';
 }
