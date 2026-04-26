@@ -16,6 +16,8 @@ class AppSpacing {
 }
 
 class AppConfig {
-  // Use 10.0.2.2 to talk to your XAMPP from the Android Emulator
-  static const String baseUrl = 'http://10.0.2.2/phpBackend'; 
+
+  static const String supabaseUrl = 'https://hhcgdgbipqmusqvunbbj.supabase.co';
+  static const String supabaseAnonKey = 'sb_publishable_gBCMjne20PFtrxkkk0Mw3w_adqHfOTZ';
+
 }
