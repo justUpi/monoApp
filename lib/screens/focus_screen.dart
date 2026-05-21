@@ -62,17 +62,26 @@ class _FocusScreenState extends State<FocusScreen> {
     try {
       List<String> results = [];
 
-      // Menggunakan pemeriksaan dinamis (dynamic check) untuk menghindari compile-time error
-      // jika fungsi fetchTasksByImportance belum diimplementasikan di TaskService milikmu.
       try {
-        results =
-            await (_taskService as dynamic).fetchTasksByImportance(level)
-                as List<String>;
+        // 1. Fetch the raw records from your dynamic service call
+        final rawResponse = await (_taskService as dynamic).fetchTasksByImportance(level);
+        
+        // 2. Safely map out only the title column into your String array
+        if (rawResponse is List) {
+          results = rawResponse
+              .map((task) => task['title'].toString())
+              .toList();
+        }
       } catch (e) {
-        // Fallback: Mengambil semua tugas menggunakan fetchTasks() yang sudah ada,
-        // kemudian kita lakukan filtering manual jika fungsi spesifik level belum dideklarasikan.
-        final allTasks = await _taskService.fetchTasks();
-        results = List<String>.from(allTasks);
+        print('Targeted fetch failed, using fallback manual filtering: $e');
+        
+        // Fallback: Fetch all tasks, filter by importance level, and extract titles
+        final List<dynamic> allTasks = await _taskService.fetchTasks();
+        
+        results = allTasks
+            .where((task) => task['importance'] == level && task['is_completed'] == false)
+            .map((task) => task['title'].toString())
+            .toList();
       }
 
       if (mounted) {
@@ -82,7 +91,7 @@ class _FocusScreenState extends State<FocusScreen> {
           _selectedLevel = level;
 
           if (_questPool.isNotEmpty) {
-            _screenState = 1; // Pindah ke layar swipe matchmaking
+            _screenState = 1; // Change screen state to Tinder swipe matchmaking
             _rerollTask();
           } else {
             _showEmptyWarning(level);
@@ -90,6 +99,7 @@ class _FocusScreenState extends State<FocusScreen> {
         });
       }
     } catch (e) {
+      print('CRITICAL FOCUS SCREEN ERROR: $e');
       if (mounted) {
         setState(() => _isLoading = false);
         _showErrorSnackBar('Gagal memuat tugas dari database');
