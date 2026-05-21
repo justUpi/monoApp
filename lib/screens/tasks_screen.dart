@@ -15,71 +15,68 @@ class TasksScreen extends StatefulWidget {
 
 class _TasksScreenState extends State<TasksScreen> {
   final TaskService _taskService = TaskService();
-  bool _isLoading = true; // Add this variable
+  bool _isLoading = true; 
   int _selectedImportance = 1;
-final List<String> _tasks = []; // Start empty
-@override
-void initState() {
-  super.initState();
-  _loadData(); // Just call it here
-}
-
-// Define the function outside initState
-void _loadData() async {
-  if (!mounted) return;
-  setState(() => _isLoading = true);
-  try {
-    final results = await _taskService.fetchTasks();
-    if (mounted) {
-      setState(() {
-        _tasks.clear();
-        _tasks.addAll(results);
-        _isLoading = false;
-      });
-    }
-  } catch (e) {
-    if (mounted) {
-      setState(() => _isLoading = false);
-    }
-  }
-}
-
-
+  final List<dynamic> _tasks = []; // Holds the full Supabase map rows
   final TextEditingController _taskController = TextEditingController();
 
-void _addNewTask() async {
-  final title = _taskController.text;
-  
-  if (title.isNotEmpty) {
-    // 1. We removed 'userId' because the Supabase Service handles it now
-    bool success = await _taskService.saveTask(
-      title: title,
-      importance: _selectedImportance,
-    );
+  @override
+  void initState() {
+    super.initState();
+    _loadData(); 
+  }
 
-    if (success) {
-      _loadData(); // Re-fetch from Supabase to ensure the list is perfectly synced
-      _taskController.clear();
-      Navigator.pop(context);
-    } else {
+  void _loadData() async {
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+    try {
+      final results = await _taskService.fetchTasks();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to save to Supabase')),
-        );
+        setState(() {
+          _tasks.clear();
+          _tasks.addAll(results);
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
       }
     }
-  }else {
-    ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(
-      content: Text('Please enter a task title'),
-      backgroundColor: Colors.orange,
-    ),
-  );
-} 
-}
+  }
+
+  void _addNewTask() async {
+    final title = _taskController.text.trim();
+    
+    if (title.isNotEmpty) {
+      bool success = await _taskService.saveTask(
+        title: title,
+        importance: _selectedImportance,
+      );
+
+      if (success) {
+        _loadData(); // Syncs the UI state perfectly back up
+        _taskController.clear();
+        Navigator.pop(context);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to save to Supabase')),
+          );
+        }
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a task title'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+    } 
+  }
 
   @override
-  build(BuildContext context) {
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -98,32 +95,32 @@ void _addNewTask() async {
       ),
 
       body: Center(
-      child: _isLoading
-    ? const CircularProgressIndicator(color: AppColors.primary) // Show spinner
-    : ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 700),
-        child: _tasks.isEmpty
-              ? _buildEmptyState()
-              : RefreshIndicator(onRefresh: ()async => _loadData(),
-              child : ListView.builder(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 10,
-                  ),
-                  itemCount: _tasks.length,
-                  itemBuilder: (context, index) {
-                    return TaskItem(
-                          title: _tasks[index],
-                          onTap: () {
-                            print('Tapped on ${_tasks[index]}');
+        child: _isLoading
+            ? const CircularProgressIndicator(color: AppColors.primary) 
+            : ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 700),
+                child: _tasks.isEmpty
+                    ? _buildEmptyState()
+                    : RefreshIndicator(
+                        onRefresh: () async => _loadData(),
+                        child: ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                          itemCount: _tasks.length,
+                          itemBuilder: (context, index) {
+                            final task = _tasks[index];    
+                            return TaskItem(
+                              title: task['title'] ?? 'Untitled Task', 
+                              onTap: () {
+                                print('Tapped on task ID: ${task['id']}');
+                              },
+                            )
+                            .animate()
+                            .fadeIn(delay: (index * 80).ms)
+                            .slideX(begin: 0.1, end: 0);
                           },
-                        )
-                        .animate()
-                        .fadeIn(delay: (index * 80).ms)
-                        .slideX(begin: 0.1, end: 0);
-                  },
-                ),)
-        ),
+                        ),
+                      ),
+              ),
       ),
 
       floatingActionButton: FloatingActionButton(
@@ -154,80 +151,79 @@ void _addNewTask() async {
   }
 
   void _showAddTaskSheet(BuildContext context) {
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (context) => StatefulBuilder( // Use StatefulBuilder to update UI inside the sheet
-      builder: (context, setSheetState) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-        ),
-        child: Container(
-          padding: const EdgeInsets.all(25),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StatefulBuilder( 
+        builder: (context, setSheetState) => Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // The drag handle at the top
-              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(10))),
-              const SizedBox(height: 25),
-              
-              // 1. Task Title Input
-              TextField(
-                controller: _taskController,
-                autofocus: true,
-                decoration: InputDecoration(
-                  hintText: 'Type your focus task...',
-                  filled: true,
-                  fillColor: Colors.grey[50],
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
+          child: Container(
+            padding: const EdgeInsets.all(25),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40, 
+                  height: 4, 
+                  decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(10))
                 ),
-              ),
-
-              const SizedBox(height: 20),
-
-              // 2. Importance Level Selection
-              Text("How important is this?", style: GoogleFonts.inter(fontSize: 14, color: Colors.grey[600])),
-              const SizedBox(height: 10),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [1, 2, 3].map((level) {
-                  return ChoiceChip(
-                    label: Text('Level $level'),
-                    selected: _selectedImportance == level,
-                    selectedColor: AppColors.primary.withOpacity(0.2),
-                    onSelected: (selected) {
-                      // This updates the UI inside the BottomSheet
-                      setSheetState(() => _selectedImportance = level);
-                    },
-                  );
-                }).toList(),
-              ),
-
-              const SizedBox(height: 25),
-
-              // 3. The Submit Button
-              SizedBox(
-                width: double.infinity,
-                height: 55,
-                child: FilledButton(
-                  onPressed: _addNewTask, // This now calls your async PHP function
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                const SizedBox(height: 25),
+                
+                TextField(
+                  controller: _taskController,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    hintText: 'Type your focus task...',
+                    filled: true,
+                    fillColor: Colors.grey[50],
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
                   ),
-                  child: const Text('Add Task', style: TextStyle(fontSize: 16)),
                 ),
-              ),
-            ],
+
+                const SizedBox(height: 20),
+
+                Text("How important is this?", style: GoogleFonts.inter(fontSize: 14, color: Colors.grey[600])),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [1, 2, 3].map((level) {
+                    return ChoiceChip(
+                      label: Text('Level $level'),
+                      selected: _selectedImportance == level,
+                      selectedColor: AppColors.primary.withOpacity(0.2),
+                      onSelected: (selected) {
+                        setSheetState(() => _selectedImportance = level);
+                      },
+                    );
+                  }).toList(),
+                ),
+
+                const SizedBox(height: 25),
+
+                SizedBox(
+                  width: double.infinity,
+                  height: 55,
+                  child: FilledButton(
+                    onPressed: _addNewTask, 
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                    ),
+                    child: const Text('Add Task', style: TextStyle(fontSize: 16)),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 }

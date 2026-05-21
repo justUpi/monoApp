@@ -1,41 +1,40 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class TaskService {
-  // Access the Supabase client initialized in main.dart
-  final _supabase = Supabase.instance.client;
+  final SupabaseClient _supabase = Supabase.instance.client;
 
-  Future<bool> saveTask({
-    required String title,
-    required int importance,
-    String? userId, // Made optional since you are testing without RLS
-  }) async {
+  // READ: Put the fetchTasks function right here
+  Future<List<dynamic>> fetchTasks() async {
     try {
-      // If you don't have a login system yet, userId can be null
-      // Ensure your Supabase table column 'user_id' allows NULL values
-      await _supabase.from('tasks').insert({
-        'title': title,
-        'importance_level': importance,
-        'user_id': userId, // Can be null for now
-        'is_completed': false,
-      });
-
-      return true;
+      final response = await _supabase.from('tasks').select();
+      return response as List<dynamic>;
     } catch (e) {
-      // This will now print actual Supabase/PostgreSQL errors in your console
-      print("Supabase Save Error: $e");
-      return false;
+      print('Error fetching tasks: $e');
+      return []; // Return empty list on failure to keep the UI stable
     }
   }
 
-  Future<List<String>> fetchTasks() async {
+  // CREATE: This is the saveTask function your UI calls in _addNewTask()
+  Future<bool> saveTask({required String title, required int importance}) async {
     try {
-      final List<dynamic> response = await _supabase
-          .from('tasks')
-          .select('title');
-      return response.map((task) => task['title'] as String).toList();
+      final userId = _supabase.auth.currentUser?.id;
+      
+      if (userId == null) {
+        print('Error: No active user session found.');
+        return false;
+      }
+
+      await _supabase.from('tasks').insert({
+        'title': title,
+        'importance': importance,
+        'is_completed': false,
+        'user_id': userId, // Satisfies your Supabase RLS security policy
+      });
+
+      return true; // Successfully saved
     } catch (e) {
-      // Re-throw so the UI can catch it
-      throw Exception("Check your internet connection.");
+      print('Error saving task: $e');
+      return false; // Failed to save
     }
   }
 }
