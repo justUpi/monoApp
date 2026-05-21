@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../core/constants.dart';
 import '../services/auth_service.dart'; // Pastikan path-nya benar
+import '../widgets/mono_app_bar.dart'; // Import custom AppBar
 import 'focus_screen.dart';
 import 'tasks_screen.dart';
 import 'login_screen.dart';
@@ -19,7 +20,67 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final List<Widget> _pages = [const FocusScreen(), const TasksScreen()];
 
-  // Fungsi Logout
+  void _showLogoutDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible:
+          true, // Memungkinkan user mengetuk area luar untuk membatalkan
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: AppColors.background,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(
+              color: AppColors.textGrey.withOpacity(0.1),
+              width: 1,
+            ),
+          ),
+          title: Text(
+            'Keluar dari MONO',
+            style: GoogleFonts.outfit(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: AppColors.primary,
+            ),
+          ),
+          content: Text(
+            'Apakah kamu yakin ingin keluar dari aplikasi?',
+            style: GoogleFonts.inter(fontSize: 14, color: AppColors.textGrey),
+          ),
+          actions: [
+            // Tombol "Batal" (No)
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text(
+                'Batal',
+                style: GoogleFonts.inter(
+                  color: AppColors.textGrey,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            // Tombol "Ya, Keluar" (Yes)
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Tutup dialog
+                _handleLogout(); // Jalankan logic logout
+              },
+              child: Text(
+                'Ya, Keluar',
+                style: GoogleFonts.inter(
+                  color: Colors.redAccent,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _handleLogout() async {
     await _authService.signOut();
     if (mounted) {
@@ -39,35 +100,9 @@ class _HomeScreenState extends State<HomeScreen> {
         bool isDesktop = constraints.maxWidth >= 600;
 
         return Scaffold(
-          appBar: AppBar(
-            backgroundColor: AppColors.background,
-            elevation: 0,
-            surfaceTintColor:
-                Colors.transparent, // Menghilangkan warna ungu di Android 12+
-            title: Text(
-              '',
-              style: GoogleFonts.outfit(
-                letterSpacing: 4,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            centerTitle: true,
-            actions: [
-              // Logout button yang lebih halus
-              Padding(
-                padding: const EdgeInsets.only(right: 10),
-                child: IconButton(
-                  onPressed: _handleLogout,
-                  icon: const Icon(
-                    Icons.logout_rounded,
-                    size: 20,
-                    color: Colors.red,
-                  ),
-                ),
-              ),
-            ],
-          ),
+          backgroundColor: AppColors.background,
+          // Memasang MonoAppBar baru yang sudah terintegrasi tombol logout di atas HomeScreen
+          appBar: MonoAppBar(onLogoutPressed: _showLogoutDialog),
           body: Row(
             children: [
               if (isDesktop)
@@ -103,7 +138,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ],
           ),
-
           bottomNavigationBar: isDesktop
               ? null
               : Container(
@@ -123,8 +157,15 @@ class _HomeScreenState extends State<HomeScreen> {
                       backgroundColor: Colors.white,
                       selectedItemColor: AppColors.primary,
                       unselectedItemColor: Colors.grey[300],
-                      showSelectedLabels: false,
-                      showUnselectedLabels: false,
+                      showSelectedLabels:
+                          true, // Menampilkan nama halaman saat aktif
+                      showUnselectedLabels:
+                          false, // Menyembunyikan nama halaman saat tidak aktif
+                      selectedLabelStyle: GoogleFonts.outfit(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 1.5,
+                      ),
                       elevation: 10,
                       items: const [
                         BottomNavigationBarItem(

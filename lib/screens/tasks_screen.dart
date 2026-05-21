@@ -15,219 +15,351 @@ class TasksScreen extends StatefulWidget {
 
 class _TasksScreenState extends State<TasksScreen> {
   final TaskService _taskService = TaskService();
-  bool _isLoading = true; // Add this variable
+  bool _isLoading = true;
   int _selectedImportance = 1;
-final List<String> _tasks = []; // Start empty
-@override
-void initState() {
-  super.initState();
-  _loadData(); // Just call it here
-}
-
-// Define the function outside initState
-void _loadData() async {
-  if (!mounted) return;
-  setState(() => _isLoading = true);
-  try {
-    final results = await _taskService.fetchTasks();
-    if (mounted) {
-      setState(() {
-        _tasks.clear();
-        _tasks.addAll(results);
-        _isLoading = false;
-      });
-    }
-  } catch (e) {
-    if (mounted) {
-      setState(() => _isLoading = false);
-    }
-  }
-}
-
-
+  final List<String> _tasks = [];
   final TextEditingController _taskController = TextEditingController();
 
-void _addNewTask() async {
-  final title = _taskController.text;
-  
-  if (title.isNotEmpty) {
-    // 1. We removed 'userId' because the Supabase Service handles it now
-    bool success = await _taskService.saveTask(
-      title: title,
-      importance: _selectedImportance,
-    );
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
 
-    if (success) {
-      _loadData(); // Re-fetch from Supabase to ensure the list is perfectly synced
-      _taskController.clear();
-      Navigator.pop(context);
-    } else {
+  void _loadData() async {
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+    try {
+      final results = await _taskService.fetchTasks();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to save to Supabase')),
-        );
+        setState(() {
+          _tasks.clear();
+          _tasks.addAll(results);
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
       }
     }
-  }else {
-    ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(
-      content: Text('Please enter a task title'),
-      backgroundColor: Colors.orange,
-    ),
-  );
-} 
-}
+  }
+
+  void _addNewTask() async {
+    final title = _taskController.text.trim();
+
+    if (title.isNotEmpty) {
+      bool success = await _taskService.saveTask(
+        title: title,
+        importance: _selectedImportance,
+      );
+
+      if (success) {
+        _loadData();
+        _taskController.clear();
+        if (mounted) Navigator.pop(context);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to save to Supabase'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a task title'),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
 
   @override
-  build(BuildContext context) {
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: Text(
-          'TASKS',
-          style: GoogleFonts.outfit(
-            letterSpacing: 4,
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: AppColors.primary,
-          ),
-        ),
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
+      body: SafeArea(
+        child: _isLoading
+            ? const Center(
+                child: CircularProgressIndicator(
+                  color: AppColors.primary,
+                  strokeWidth: 2.5,
+                ),
+              )
+            : Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 700),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Sub-Header Elegan khas Desain MONO
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          left: 24,
+                          right: 24,
+                          top: 20,
+                          bottom: 8,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'TASKS POOL',
+                              style: GoogleFonts.outfit(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 2.5,
+                                color: AppColors.textGrey.withOpacity(0.5),
+                              ),
+                            ),
+                            Text(
+                              '${_tasks.length} active',
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.textGrey.withOpacity(0.4),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
 
-      body: Center(
-      child: _isLoading
-    ? const CircularProgressIndicator(color: AppColors.primary) // Show spinner
-    : ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 700),
-        child: _tasks.isEmpty
-              ? _buildEmptyState()
-              : RefreshIndicator(onRefresh: ()async => _loadData(),
-              child : ListView.builder(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 10,
+                      Expanded(
+                        child: _tasks.isEmpty
+                            ? _buildEmptyState()
+                            : RefreshIndicator(
+                                onRefresh: () async => _loadData(),
+                                color: AppColors.primary,
+                                strokeWidth: 2,
+                                child: ListView.builder(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                    vertical: 10,
+                                  ),
+                                  itemCount: _tasks.length,
+                                  itemBuilder: (context, index) {
+                                    return TaskItem(
+                                          title: _tasks[index],
+                                          onTap: () {
+                                            debugPrint(
+                                              'Tapped on ${_tasks[index]}',
+                                            );
+                                          },
+                                        )
+                                        .animate()
+                                        .fadeIn(
+                                          delay: (index * 60).ms,
+                                          duration: 400.ms,
+                                        )
+                                        .slideY(
+                                          begin: 0.05,
+                                          end: 0,
+                                          curve: Curves.easeOutCubic,
+                                        );
+                                  },
+                                ),
+                              ),
+                      ),
+                    ],
                   ),
-                  itemCount: _tasks.length,
-                  itemBuilder: (context, index) {
-                    return TaskItem(
-                          title: _tasks[index],
-                          onTap: () {
-                            print('Tapped on ${_tasks[index]}');
-                          },
-                        )
-                        .animate()
-                        .fadeIn(delay: (index * 80).ms)
-                        .slideX(begin: 0.1, end: 0);
-                  },
-                ),)
-        ),
+                ),
+              ),
       ),
-
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddTaskSheet(context),
         backgroundColor: AppColors.primary,
+        elevation: 4,
         shape: const CircleBorder(),
         child: const Icon(Icons.add, color: Colors.white, size: 28),
-      ).animate().scale(delay: 500.ms, curve: Curves.easeOutBack),
+      ).animate().scale(delay: 400.ms, curve: Curves.easeOutBack),
     );
   }
 
   Widget _buildEmptyState() {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(
-          Icons.assignment_turned_in_outlined,
-          size: 80,
-          color: Colors.grey[300],
-        ),
-        const SizedBox(height: 20),
-        Text(
-          'No tasks for today.',
-          style: GoogleFonts.inter(color: Colors.grey),
-        ),
-      ],
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.assignment_turned_in_outlined,
+            size: 64,
+            color: AppColors.textGrey.withOpacity(0.2),
+          ).animate().scale(duration: 400.ms, curve: Curves.easeOutBack),
+          const SizedBox(height: 16),
+          Text(
+            'No tasks for today.',
+            style: GoogleFonts.inter(
+              color: AppColors.textGrey.withOpacity(0.5),
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   void _showAddTaskSheet(BuildContext context) {
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (context) => StatefulBuilder( // Use StatefulBuilder to update UI inside the sheet
-      builder: (context, setSheetState) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-        ),
-        child: Container(
-          padding: const EdgeInsets.all(25),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheetState) => Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // The drag handle at the top
-              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(10))),
-              const SizedBox(height: 25),
-              
-              // 1. Task Title Input
-              TextField(
-                controller: _taskController,
-                autofocus: true,
-                decoration: InputDecoration(
-                  hintText: 'Type your focus task...',
-                  filled: true,
-                  fillColor: Colors.grey[50],
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              // 2. Importance Level Selection
-              Text("How important is this?", style: GoogleFonts.inter(fontSize: 14, color: Colors.grey[600])),
-              const SizedBox(height: 10),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [1, 2, 3].map((level) {
-                  return ChoiceChip(
-                    label: Text('Level $level'),
-                    selected: _selectedImportance == level,
-                    selectedColor: AppColors.primary.withOpacity(0.2),
-                    onSelected: (selected) {
-                      // This updates the UI inside the BottomSheet
-                      setSheetState(() => _selectedImportance = level);
-                    },
-                  );
-                }).toList(),
-              ),
-
-              const SizedBox(height: 25),
-
-              // 3. The Submit Button
-              SizedBox(
-                width: double.infinity,
-                height: 55,
-                child: FilledButton(
-                  onPressed: _addNewTask, // This now calls your async PHP function
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Garis seret (Drag handle) yang halus
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
-                  child: const Text('Add Task', style: TextStyle(fontSize: 16)),
                 ),
-              ),
-            ],
+                const SizedBox(height: 24),
+
+                // Judul Input
+                TextField(
+                  controller: _taskController,
+                  autofocus: true,
+                  style: GoogleFonts.inter(
+                    fontSize: 15,
+                    color: AppColors.primary,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'Type your focus task...',
+                    hintStyle: GoogleFonts.inter(
+                      color: AppColors.textGrey.withOpacity(0.4),
+                    ),
+                    filled: true,
+                    fillColor: AppColors.background.withOpacity(0.5),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: const BorderSide(
+                        color: AppColors.primary,
+                        width: 1.2,
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // Pilihan tingkat urgensi dengan gaya MONO
+                Text(
+                  "How important is this?",
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textGrey.withOpacity(0.7),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [1, 2, 3].map((level) {
+                    final isSelected = _selectedImportance == level;
+                    return Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.only(
+                          left: level == 1 ? 0 : 6,
+                          right: level == 3 ? 0 : 6,
+                        ),
+                        child: ChoiceChip(
+                          label: Center(
+                            child: Text(
+                              'Level $level',
+                              style: GoogleFonts.inter(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: isSelected
+                                    ? Colors.white
+                                    : AppColors.textGrey,
+                              ),
+                            ),
+                          ),
+                          selected: isSelected,
+                          selectedColor: AppColors.primary,
+                          backgroundColor: AppColors.background,
+                          showCheckmark: false,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(
+                              color: isSelected
+                                  ? AppColors.primary
+                                  : AppColors.textGrey.withOpacity(0.15),
+                              width: 1,
+                            ),
+                          ),
+                          onSelected: (selected) {
+                            setSheetState(() => _selectedImportance = level);
+                          },
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+
+                const SizedBox(height: 24),
+
+                // Tombol Submit Premium
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: FilledButton(
+                    onPressed: _addNewTask,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: Text(
+                      'Add Task',
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 }
