@@ -20,7 +20,7 @@ class _FocusScreenState extends State<FocusScreen> {
   final TaskService _taskService = TaskService();
   final Random _random = Random();
 
-  // Status navigasi layar internal
+  // Status navigasi layar internal:
   // 0: Memilih Level Energi/Mood (Pilih Tingkat Kesulitan Quest)
   // 1: Matchmaking Tugas (Sistem Geser/Swipe ala Tinder)
   // 2: Quest Sedang Aktif (Layar Terkunci Sampai Tugas Selesai)
@@ -57,7 +57,6 @@ class _FocusScreenState extends State<FocusScreen> {
   }
 
   // Memuat daftar tugas dari Supabase yang belum selesai berdasarkan level pentingnya (importance_level)
-  // Menggunakan fallback dinamis jika metode khusus belum dideklarasikan di TaskService
   void _loadTasksForLevel(int level) async {
     setState(() => _isLoading = true);
     try {
@@ -71,7 +70,7 @@ class _FocusScreenState extends State<FocusScreen> {
                 as List<String>;
       } catch (e) {
         // Fallback: Mengambil semua tugas menggunakan fetchTasks() yang sudah ada,
-        // kemudian kita lakukan filtering manual atau menggunakannya sebagai pool jika filtering gagal.
+        // kemudian kita lakukan filtering manual jika fungsi spesifik level belum dideklarasikan.
         final allTasks = await _taskService.fetchTasks();
         results = List<String>.from(allTasks);
       }
@@ -119,7 +118,7 @@ class _FocusScreenState extends State<FocusScreen> {
         _screenState = 2; // Mengunci layar ke Quest Mode
       });
 
-      if (await Vibration.hasVibrator() ?? false) {
+      if (await Vibration.hasVibrator()) {
         Vibration.vibrate(
           pattern: [0, 40, 80, 40],
         ); // Umpan balik haptik sukses menerima quest
@@ -128,7 +127,6 @@ class _FocusScreenState extends State<FocusScreen> {
   }
 
   // Menyelesaikan Quest, menghapus sesi penyimpanan lokal, dan memperbarui status di Supabase
-  // Menggunakan fallback dinamis jika metode completeTask belum dideklarasikan di TaskService
   void _completeQuest() async {
     setState(() => _isLoading = true);
 
@@ -138,8 +136,7 @@ class _FocusScreenState extends State<FocusScreen> {
       try {
         await (_taskService as dynamic).completeTask(_activeQuestTask);
       } catch (e) {
-        // Fallback aman: Jika completeTask belum ada di servis kamu, kita tetap dapat melanjutkannya
-        // secara visual dan lokal agar aplikasi tidak crash saat diuji coba.
+        // Fallback aman jika completeTask belum terpasang di database
         debugPrint(
           'Fallback: completeTask belum diimplementasikan di TaskService. Error: $e',
         );
@@ -156,7 +153,7 @@ class _FocusScreenState extends State<FocusScreen> {
           _isLoading = false;
         });
 
-        if (await Vibration.hasVibrator() ?? false) {
+        if (await Vibration.hasVibrator()) {
           Vibration.vibrate(
             duration: 150,
           ); // Getaran panjang saat quest berhasil diselesaikan
@@ -418,9 +415,9 @@ class _FocusScreenState extends State<FocusScreen> {
     );
   }
 
-  // TAMPILAN 2: Swipe Matchmaking (Quest Selection ala Tinder - Edisi Kartu RPG Eksklusif)
+  // TAMPILAN 2: Swipe Matchmaking (Quest Selection ala Tinder)
   Widget _buildQuestMatchmakerView() {
-    // Menyesuaikan warna tema kartu petualangan berdasarkan tingkatan energi yang dipilih
+    // Menyesuaikan warna aksen dan ikon berdasarkan level yang sedang dipilih
     Color accentColor;
     IconData levelIcon;
     switch (_selectedLevel) {
@@ -461,29 +458,30 @@ class _FocusScreenState extends State<FocusScreen> {
             ),
             const SizedBox(
               width: 48,
-            ), // Spasi penyeimbang agar judul tetap berada di tengah
+            ), // Spacer penyeimbang layout agar judul tetap di tengah
           ],
         ),
 
         const Spacer(),
 
-        // Wadah Geser Kartu Tugas (Didesain lebih besar dan kokoh mirip kartu petualangan RPG asli)
+        // Wadah Geser Kartu Tugas (Menggunakan Dismissible untuk memicu animasi geser kartu)
         Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(
               maxWidth: 480,
               maxHeight:
-                  460, // Membuat kartu jauh lebih tinggi dan proporsional layaknya kartu koleksi
+                  460, // Ketinggian kartu diselaraskan agar proporsional layaknya kartu RPG premium
             ),
             child: Dismissible(
-              key: UniqueKey(), // Memaksa pembuatan ulang widget saat di-reroll
+              key:
+                  UniqueKey(), // Memaksa pembuatan ulang widget saat di-reroll tugas baru
               direction: DismissDirection.horizontal,
               onDismissed: (direction) {
                 if (direction == DismissDirection.endToStart) {
-                  // Geser Kiri: Skip & Reroll Acak Tugas Baru
+                  // Geser Kiri: Abaikan & Reroll Tugas Baru
                   _rerollTask();
                 } else if (direction == DismissDirection.startToEnd) {
-                  // Geser Kanan: Terima Quest & Kunci Sesi
+                  // Geser Kanan: Terima Quest & Simpan Sesi
                   _acceptQuest(_currentRandomTask);
                 }
               },
@@ -558,153 +556,12 @@ class _FocusScreenState extends State<FocusScreen> {
                   ],
                 ),
               ),
-              child: Card(
-                elevation: 12,
-                shadowColor: AppColors.primary.withOpacity(0.15),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(28),
-                ),
-                child: Container(
-                  width: double.infinity,
-                  height: double.infinity,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(28),
-                    border: Border.all(
-                      color: accentColor.withOpacity(0.35),
-                      width: 2,
-                    ),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(26),
-                    child: Stack(
-                      children: [
-                        // Aksen background dekoratif minimalis khas RPG
-                        Positioned(
-                          top: -60,
-                          right: -60,
-                          child: CircleAvatar(
-                            radius: 110,
-                            backgroundColor: accentColor.withOpacity(0.04),
-                          ),
-                        ),
-
-                        Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 28,
-                            vertical: 32,
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              // Bagian Atas Kartu (Rank Badge & Icon)
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 14,
-                                      vertical: 6,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: accentColor.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          levelIcon,
-                                          size: 14,
-                                          color: accentColor,
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          'LVL $_selectedLevel QUEST',
-                                          style: GoogleFonts.outfit(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w700,
-                                            letterSpacing: 1,
-                                            color: accentColor,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  Icon(
-                                    Icons.shield_outlined,
-                                    size: 20,
-                                    color: AppColors.textGrey.withOpacity(0.4),
-                                  ),
-                                ],
-                              ),
-
-                              const Spacer(),
-
-                              // Konten Judul Tugas Utama (Paling Besar & Intuitif di Tengah)
-                              Center(
-                                child: Text(
-                                  _currentRandomTask,
-                                  textAlign: TextAlign.center,
-                                  style: GoogleFonts.inter(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.primary,
-                                    height: 1.4,
-                                  ),
-                                ),
-                              ).animate().scale(
-                                duration: 350.ms,
-                                curve: Curves.easeOutBack,
-                              ),
-
-                              const Spacer(),
-
-                              // Bagian Bawah Kartu (Status Quest & Tanda Persetujuan)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 14,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.background,
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: AppColors.textGrey.withOpacity(0.08),
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.touch_app_rounded,
-                                      size: 14,
-                                      color: AppColors.textGrey.withOpacity(
-                                        0.6,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'GESER KANAN UNTUK MEMULAI',
-                                      style: GoogleFonts.outfit(
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.w600,
-                                        letterSpacing: 1.5,
-                                        color: AppColors.textGrey.withOpacity(
-                                          0.6,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+              // Memakai MonoCard sebagai reusable widget yang bersih, aman, dan kokoh
+              child: MonoCard(
+                text: _currentRandomTask,
+                level: _selectedLevel,
+                accentColor: accentColor,
+                levelIcon: levelIcon,
               ),
             ),
           ),
@@ -712,7 +569,7 @@ class _FocusScreenState extends State<FocusScreen> {
 
         const Spacer(),
 
-        // Instruksi Navigasi Isyarat Gestur (Swipe Gestures)
+        // Panduan Isyarat Gestur (Swipe Gestures) di bagian bawah
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
@@ -781,7 +638,7 @@ class _FocusScreenState extends State<FocusScreen> {
       children: [
         const Spacer(),
 
-        // Indikator Berkedip RPG
+        // Indikator RPG Berkedip Lambat
         Center(
           child: Column(
             children: [
