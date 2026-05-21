@@ -3,17 +3,19 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class TaskService {
   final SupabaseClient _supabase = Supabase.instance.client;
 
-  // READ: Mengambil semua tugas milik user yang sedang login
+  // READ: Fetch only UNCOMPLETED tasks belonging to the active session user
   Future<List<dynamic>> fetchTasks() async {
     try {
-      // Menambahkan modifier .order() agar data terurut berdasarkan yang terbaru
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) return [];
+
       final response = await _supabase
           .from('tasks')
           .select()
-          .order(
-            'id',
-            ascending: false,
-          ); // atau ganti 'id' dengan 'created_at' jika ada
+          .eq('user_id', userId)
+          .eq('is_completed', false) // Protects your screens from displaying completed items
+          .order('id', ascending: false);
+          
       return response as List<dynamic>;
     } catch (e) {
       print('Error fetching tasks: $e');
@@ -21,7 +23,27 @@ class TaskService {
     }
   }
 
-  // CREATE: Menyimpan tugas baru ke Supabase
+  // NEW FEATURE: Fetch dynamically by energy/importance level for your Focus Board
+  Future<List<dynamic>> fetchTasksByImportance(int level) async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) return [];
+
+      final response = await _supabase
+          .from('tasks')
+          .select()
+          .eq('user_id', userId)
+          .eq('importance', level)
+          .eq('is_completed', false); // Only actively load outstanding quests
+          
+      return response as List<dynamic>;
+    } catch (e) {
+      print('Error fetching filtered tasks: $e');
+      return [];
+    }
+  }
+
+  // CREATE: Save a fresh task cleanly trimmed
   Future<bool> saveTask({
     required String title,
     required int importance,
@@ -35,10 +57,10 @@ class TaskService {
       }
 
       await _supabase.from('tasks').insert({
-        'title': title,
+        'title': title.trim(), // Strips accidental leading/trailing spaces
         'importance': importance,
         'is_completed': false,
-        'user_id': userId, // Memenuhi policy RLS Supabase
+        'user_id': userId,
       });
 
       return true;
@@ -48,8 +70,7 @@ class TaskService {
     }
   }
 
-  // UPDATE: Fungsi baru untuk menandai tugas sebagai selesai
-  // Menerima 'idOrTitle' berupa int (ID database) atau String (Judul tugas)
+  // UPDATE: Mark task complete with whitespace protections
   Future<bool> completeTask(dynamic idOrTitle) async {
     try {
       final userId = _supabase.auth.currentUser?.id;
@@ -60,17 +81,16 @@ class TaskService {
       if (idOrTitle is int) {
         query = query.eq('id', idOrTitle);
       } else if (idOrTitle is String) {
-        query = query.eq('title', idOrTitle);
+        // Trim the incoming title string to guarantee an exact match with the DB value
+        query = query.eq('title', idOrTitle.trim());
       } else {
         return false;
       }
 
-      // Jalankan kueri dan minta data kembalian untuk melihat apakah ada baris yang ter-update
       final response = await query.eq('user_id', userId).select();
-      print('Hasil update Supabase: $response'); // <--- TAMBAHKAN INI
+      print('Hasil update Supabase: $response'); 
 
-      return response
-          .isNotEmpty; // Mengembalikan true jika ada data yang berhasil diubah
+      return response.isNotEmpty; 
     } catch (e) {
       print('Error completing task: $e');
       return false;
