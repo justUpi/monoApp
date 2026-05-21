@@ -18,7 +18,12 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   final AuthService _authService = AuthService();
 
-  final List<Widget> _pages = [const FocusScreen(), const TasksScreen()];
+  List<Widget> get _pages => [
+    const FocusScreen(),
+    TasksScreen(
+      isActive: _selectedIndex == 1,
+    ), // Mengirim info status aktif tab secara real-time
+  ];
 
   void _showLogoutDialog() {
     showDialog(

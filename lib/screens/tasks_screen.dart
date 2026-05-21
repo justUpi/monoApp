@@ -7,34 +7,88 @@ import '../widgets/task_item.dart';
 import '../services/task_services.dart';
 
 class TasksScreen extends StatefulWidget {
-  const TasksScreen({super.key});
+  final bool
+  isActive; // Parameter untuk mendeteksi apakah tab ini sedang aktif/terbuka
+
+  const TasksScreen({super.key, this.isActive = false});
 
   @override
   State<TasksScreen> createState() => _TasksScreenState();
 }
 
-class _TasksScreenState extends State<TasksScreen> {
+class _TasksScreenState extends State<TasksScreen>
+    with SingleTickerProviderStateMixin {
   final TaskService _taskService = TaskService();
-  bool _isLoading = true; 
+  late TabController _tabController;
+
+  bool _isLoading = true;
   int _selectedImportance = 1;
-  final List<dynamic> _tasks = []; // Kept your critical dynamic list for Supabase rows
   final TextEditingController _taskController = TextEditingController();
+
+  // Memisahkan penampung data tugas aktif dan selesai
+  final List<dynamic> _activeTasks = [];
+  final List<dynamic> _completedTasks = [];
 
   @override
   void initState() {
     super.initState();
-    _loadData(); 
+    _tabController = TabController(length: 2, vsync: this);
+    _loadData(
+      showSpinner: true,
+    ); // Pertama kali dibuka, tampilkan loading spinner
   }
 
-  void _loadData() async {
+  // Mendeteksi perubahan parameter dari HomeScreen secara otomatis saat berpindah tab
+  @override
+  void didUpdateWidget(covariant TasksScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Jika tab yang tadinya tidak aktif sekarang menjadi aktif, muat ulang data secara senyap
+    if (widget.isActive && !oldWidget.isActive) {
+      _loadData(showSpinner: false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _taskController.dispose();
+    super.dispose();
+  }
+
+  // Memuat data dengan opsi spinner transparan agar transisi tab terasa instan
+  void _loadData({bool showSpinner = true}) async {
     if (!mounted) return;
-    setState(() => _isLoading = true);
+    if (showSpinner) {
+      setState(() => _isLoading = true);
+    }
     try {
       final results = await _taskService.fetchTasks();
       if (mounted) {
+        final List<dynamic> active = [];
+        final List<dynamic> completed = [];
+
+        for (var task in results) {
+          // Penanganan fleksibel untuk mendeteksi status true/false dari database
+          final dynamic rawCompleted = task['is_completed'];
+          final bool isDone =
+              rawCompleted == true ||
+              rawCompleted == 1 ||
+              rawCompleted == 'true';
+
+          if (isDone) {
+            completed.add(task);
+          } else {
+            active.add(task);
+          }
+        }
+
         setState(() {
-          _tasks.clear();
-          _tasks.addAll(results);
+          _activeTasks.clear();
+          _activeTasks.addAll(active);
+
+          _completedTasks.clear();
+          _completedTasks.addAll(completed);
+
           _isLoading = false;
         });
       }
@@ -47,7 +101,7 @@ class _TasksScreenState extends State<TasksScreen> {
 
   void _addNewTask() async {
     final title = _taskController.text.trim();
-    
+
     if (title.isNotEmpty) {
       bool success = await _taskService.saveTask(
         title: title,
@@ -55,28 +109,55 @@ class _TasksScreenState extends State<TasksScreen> {
       );
 
       if (success) {
-        _loadData(); // Syncs UI state back up
+        _loadData(showSpinner: false);
         _taskController.clear();
         if (mounted) Navigator.pop(context);
       } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Failed to save to Supabase'),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
+        _showSnackBar('Failed to save to Supabase', Colors.redAccent);
       }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter a task title'),
-          backgroundColor: Colors.orange,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    } 
+      _showSnackBar('Please enter a task title', Colors.orange);
+    }
+  }
+
+  // Fungsi dinamis untuk memicu perubahan status selesai di database Supabase
+  void _toggleTaskStatus(dynamic task) async {
+    setState(() => _isLoading = true);
+    try {
+      // Ambil ID atau Title secara aman (dahulukan ID jika tersedia)
+      final dynamic targetIdOrTitle = task['id'] ?? task['title'] ?? '';
+
+      if (targetIdOrTitle != '') {
+        // Panggil langsung tanpa 'as dynamic' karena method sudah terdefinisi di TaskService
+        bool success = await _taskService.completeTask(targetIdOrTitle);
+
+        if (success) {
+          _loadData(showSpinner: false); // Muat kembali data secara senyap
+        } else {
+          throw Exception("Gagal memperbarui di Supabase");
+        }
+      } else {
+        _showSnackBar('Data tugas tidak valid', Colors.orange);
+        setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        _showSnackBar('Gagal memperbarui status tugas', Colors.redAccent);
+      }
+    }
+  }
+
+  void _showSnackBar(String text, Color backgroundColor) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(text),
+        backgroundColor: backgroundColor,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
   }
 
   @override
@@ -97,73 +178,85 @@ class _TasksScreenState extends State<TasksScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Sub-Header Elegan khas Desain MONO (Friend's Premium Design)
+                      // Premium Header & Tab Bar Switcher
                       Padding(
                         padding: const EdgeInsets.only(
                           left: 24,
                           right: 24,
-                          top: 20,
-                          bottom: 8,
+                          top: 24,
+                          bottom: 4,
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              'TASKS POOL',
+                              'TASKS HUB',
                               style: GoogleFonts.outfit(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
                                 letterSpacing: 2.5,
-                                color: AppColors.textGrey.withOpacity(0.5),
+                                color: AppColors.primary,
                               ),
                             ),
-                            Text(
-                              '${_tasks.length} active',
-                              style: GoogleFonts.inter(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
-                                color: AppColors.textGrey.withOpacity(0.4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withOpacity(0.06),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                '${_activeTasks.length} pending',
+                                style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primary,
+                                ),
                               ),
                             ),
                           ],
                         ),
                       ),
 
-                      // List View area safely parsing map data to UI components
+                      // Custom Minimalist Tab Bar Design
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        child: TabBar(
+                          controller: _tabController,
+                          labelColor: AppColors.primary,
+                          unselectedLabelColor: AppColors.textGrey.withOpacity(
+                            0.5,
+                          ),
+                          indicatorColor: AppColors.primary,
+                          indicatorSize: TabBarIndicatorSize.label,
+                          dividerColor: Colors.transparent,
+                          labelStyle: GoogleFonts.outfit(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          tabs: const [
+                            Tab(text: 'Active Quests'),
+                            Tab(text: 'History'),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 8),
+
+                      // Tab View Content Area
                       Expanded(
-                        child: _tasks.isEmpty
-                            ? _buildEmptyState()
-                            : RefreshIndicator(
-                                onRefresh: () async => _loadData(),
-                                color: AppColors.primary,
-                                strokeWidth: 2,
-                                child: ListView.builder(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 20,
-                                    vertical: 10,
-                                  ),
-                                  itemCount: _tasks.length,
-                                  itemBuilder: (context, index) {
-                                    final task = _tasks[index];    
-                                    return TaskItem(
-                                      title: task['title'] ?? 'Untitled Task', 
-                                      onTap: () {
-                                        debugPrint('Tapped on task ID: ${task['id']}');
-                                      },
-                                    )
-                                    .animate()
-                                    .fadeIn(
-                                      delay: (index * 60).ms,
-                                      duration: 400.ms,
-                                    )
-                                    .slideY(
-                                      begin: 0.05,
-                                      end: 0,
-                                      curve: Curves.easeOutCubic,
-                                    );
-                                  },
-                                ),
-                              ),
+                        child: TabBarView(
+                          controller: _tabController,
+                          children: [
+                            // TAB 1: Daftar Tugas Aktif (Belum Selesai)
+                            _buildTaskList(_activeTasks, isHistory: false),
+
+                            // TAB 2: Riwayat Tugas (Sudah Selesai)
+                            _buildTaskList(_completedTasks, isHistory: true),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -180,22 +273,54 @@ class _TasksScreenState extends State<TasksScreen> {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildTaskList(List<dynamic> taskSource, {required bool isHistory}) {
+    if (taskSource.isEmpty) {
+      return _buildEmptyState(isHistory);
+    }
+
+    return RefreshIndicator(
+      onRefresh: () async => _loadData(showSpinner: false),
+      color: AppColors.primary,
+      strokeWidth: 2,
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        itemCount: taskSource.length,
+        itemBuilder: (context, index) {
+          final task = taskSource[index];
+          return TaskItem(
+                title: task['title'] ?? 'Untitled Task',
+                isCompleted:
+                    isHistory, // Menandai coretan teks jika berada di tab History
+                onTap: () {},
+              )
+              .animate()
+              .fadeIn(delay: (index * 40).ms, duration: 350.ms)
+              .slideY(begin: 0.04, end: 0, curve: Curves.easeOutCubic);
+        },
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(bool isHistory) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            Icons.assignment_turned_in_outlined,
-            size: 64,
-            color: AppColors.textGrey.withOpacity(0.2),
+            isHistory
+                ? Icons.history_toggle_off_rounded
+                : Icons.assignment_turned_in_outlined,
+            size: 56,
+            color: AppColors.textGrey.withOpacity(0.15),
           ).animate().scale(duration: 400.ms, curve: Curves.easeOutBack),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           Text(
-            'No tasks for today.',
+            isHistory
+                ? 'No completed tasks yet.'
+                : 'All catch up! No pending tasks.',
             style: GoogleFonts.inter(
-              color: AppColors.textGrey.withOpacity(0.5),
-              fontSize: 14,
+              color: AppColors.textGrey.withOpacity(0.4),
+              fontSize: 13,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -224,7 +349,6 @@ class _TasksScreenState extends State<TasksScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Drag handle
                 Center(
                   child: Container(
                     width: 36,
@@ -236,8 +360,6 @@ class _TasksScreenState extends State<TasksScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-
-                // Judul Input
                 TextField(
                   controller: _taskController,
                   autofocus: true,
@@ -269,10 +391,7 @@ class _TasksScreenState extends State<TasksScreen> {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 20),
-
-                // Pilihan tingkat urgensi (Friend's Premium Layout)
                 Text(
                   "How important is this?",
                   style: GoogleFonts.inter(
@@ -299,7 +418,9 @@ class _TasksScreenState extends State<TasksScreen> {
                               style: GoogleFonts.inter(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
-                                color: isSelected ? Colors.white : AppColors.textGrey,
+                                color: isSelected
+                                    ? Colors.white
+                                    : AppColors.textGrey,
                               ),
                             ),
                           ),
@@ -326,10 +447,7 @@ class _TasksScreenState extends State<TasksScreen> {
                     );
                   }).toList(),
                 ),
-
                 const SizedBox(height: 24),
-
-                // Tombol Submit Premium
                 SizedBox(
                   width: double.infinity,
                   height: 52,
