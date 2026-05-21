@@ -3,7 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class TaskService {
   final SupabaseClient _supabase = Supabase.instance.client;
 
-  // READ: Fetch only UNCOMPLETED tasks belonging to the active session user
+  // READ: Mengambil SEMUA tugas milik user (Aktif maupun Selesai) untuk Tasks Hub
   Future<List<dynamic>> fetchTasks() async {
     try {
       final userId = _supabase.auth.currentUser?.id;
@@ -13,7 +13,8 @@ class TaskService {
           .from('tasks')
           .select()
           .eq('user_id', userId)
-          .eq('is_completed', false) // Protects your screens from displaying completed items
+          // REMOVED: .eq('is_completed', false) 
+          // We removed the filter so both active and history data can be processed by TasksScreen!
           .order('id', ascending: false);
           
       return response as List<dynamic>;
@@ -23,7 +24,7 @@ class TaskService {
     }
   }
 
-  // NEW FEATURE: Fetch dynamically by energy/importance level for your Focus Board
+  // READ SPECIFIC: Digunakan khusus oleh Focus Screen/Board berdasarkan Level Energi
   Future<List<dynamic>> fetchTasksByImportance(int level) async {
     try {
       final userId = _supabase.auth.currentUser?.id;
@@ -34,7 +35,7 @@ class TaskService {
           .select()
           .eq('user_id', userId)
           .eq('importance', level)
-          .eq('is_completed', false); // Only actively load outstanding quests
+          .eq('is_completed', false); // Focus Screen tetap hanya mengambil tugas aktif
           
       return response as List<dynamic>;
     } catch (e) {
@@ -43,7 +44,7 @@ class TaskService {
     }
   }
 
-  // CREATE: Save a fresh task cleanly trimmed
+  // CREATE: Menyimpan tugas baru ke Supabase
   Future<bool> saveTask({
     required String title,
     required int importance,
@@ -57,7 +58,7 @@ class TaskService {
       }
 
       await _supabase.from('tasks').insert({
-        'title': title.trim(), // Strips accidental leading/trailing spaces
+        'title': title.trim(), 
         'importance': importance,
         'is_completed': false,
         'user_id': userId,
@@ -70,7 +71,7 @@ class TaskService {
     }
   }
 
-  // UPDATE: Mark task complete with whitespace protections
+  // UPDATE: Menandai tugas sebagai selesai
   Future<bool> completeTask(dynamic idOrTitle) async {
     try {
       final userId = _supabase.auth.currentUser?.id;
@@ -81,7 +82,6 @@ class TaskService {
       if (idOrTitle is int) {
         query = query.eq('id', idOrTitle);
       } else if (idOrTitle is String) {
-        // Trim the incoming title string to guarantee an exact match with the DB value
         query = query.eq('title', idOrTitle.trim());
       } else {
         return false;
