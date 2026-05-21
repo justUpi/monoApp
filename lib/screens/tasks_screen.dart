@@ -55,7 +55,7 @@ class _TasksScreenState extends State<TasksScreen>
     super.dispose();
   }
 
-  // Memuat data dengan opsi spinner transparan agar transisi tab terasa instan
+  // Memuat data dengan penanganan tipe data yang super ketat dan aman
   void _loadData({bool showSpinner = true}) async {
     if (!mounted) return;
     if (showSpinner) {
@@ -68,12 +68,23 @@ class _TasksScreenState extends State<TasksScreen>
         final List<dynamic> completed = [];
 
         for (var task in results) {
-          // Penanganan fleksibel untuk mendeteksi status true/false dari database
           final dynamic rawCompleted = task['is_completed'];
-          final bool isDone =
-              rawCompleted == true ||
-              rawCompleted == 1 ||
-              rawCompleted == 'true';
+
+          // Pengecekan menyeluruh mencakup tipe boolean, integer, string, hingga karakter inisial postgres ('t')
+          bool isDone = false;
+          if (rawCompleted != null) {
+            if (rawCompleted is bool) {
+              isDone = rawCompleted;
+            } else if (rawCompleted is int) {
+              isDone = rawCompleted == 1;
+            } else if (rawCompleted is String) {
+              final normalized = rawCompleted.trim().toLowerCase();
+              isDone =
+                  normalized == 'true' ||
+                  normalized == '1' ||
+                  normalized == 't';
+            }
+          }
 
           if (isDone) {
             completed.add(task);
@@ -117,34 +128,6 @@ class _TasksScreenState extends State<TasksScreen>
       }
     } else {
       _showSnackBar('Please enter a task title', Colors.orange);
-    }
-  }
-
-  // Fungsi dinamis untuk memicu perubahan status selesai di database Supabase
-  void _toggleTaskStatus(dynamic task) async {
-    setState(() => _isLoading = true);
-    try {
-      // Ambil ID atau Title secara aman (dahulukan ID jika tersedia)
-      final dynamic targetIdOrTitle = task['id'] ?? task['title'] ?? '';
-
-      if (targetIdOrTitle != '') {
-        // Panggil langsung tanpa 'as dynamic' karena method sudah terdefinisi di TaskService
-        bool success = await _taskService.completeTask(targetIdOrTitle);
-
-        if (success) {
-          _loadData(showSpinner: false); // Muat kembali data secara senyap
-        } else {
-          throw Exception("Gagal memperbarui di Supabase");
-        }
-      } else {
-        _showSnackBar('Data tugas tidak valid', Colors.orange);
-        setState(() => _isLoading = false);
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        _showSnackBar('Gagal memperbarui status tugas', Colors.redAccent);
-      }
     }
   }
 
@@ -250,7 +233,7 @@ class _TasksScreenState extends State<TasksScreen>
                         child: TabBarView(
                           controller: _tabController,
                           children: [
-                            // TAB 1: Daftar Tugas Aktif (Belum Selesai)
+                            // TAB 1: Daftar Tugas Aktif
                             _buildTaskList(_activeTasks, isHistory: false),
 
                             // TAB 2: Riwayat Tugas (Sudah Selesai)
@@ -290,8 +273,10 @@ class _TasksScreenState extends State<TasksScreen>
           return TaskItem(
                 title: task['title'] ?? 'Untitled Task',
                 isCompleted:
-                    isHistory, // Menandai coretan teks jika berada di tab History
-                onTap: () {},
+                    isHistory, // Otomatis mencoret teks jika dirender di tab History
+                onTap: () {
+                  // Kosong: Perubahan status dikunci, hanya bisa dari Focus Screen
+                },
               )
               .animate()
               .fadeIn(delay: (index * 40).ms, duration: 350.ms)
