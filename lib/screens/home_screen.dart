@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+
 import '../core/constants.dart';
-import '../services/auth_service.dart'; // Pastikan path-nya benar
-import '../widgets/mono_app_bar.dart'; // Import custom AppBar
+import '../services/auth_service.dart'; 
+import '../widgets/mono_app_bar.dart'; 
 import 'focus_screen.dart';
 import 'tasks_screen.dart';
 import 'login_screen.dart';
@@ -15,21 +16,24 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _selectedIndex = 0;
+  // UBAH DARI 0 MENJADI 1
+  int _selectedIndex = 1; 
   final AuthService _authService = AuthService();
 
+  // Getter _pages akan otomatis mendeteksi _selectedIndex == 1 sebagai halaman aktif pertama
   List<Widget> get _pages => [
-    const FocusScreen(),
-    TasksScreen(
-      isActive: _selectedIndex == 1,
-    ), // Mengirim info status aktif tab secara real-time
-  ];
+        FocusScreen(
+          isActive: _selectedIndex == 0,
+        ), 
+        TasksScreen(
+          isActive: _selectedIndex == 1,
+        ), 
+      ];
 
   void _showLogoutDialog() {
     showDialog(
       context: context,
-      barrierDismissible:
-          true, // Memungkinkan user mengetuk area luar untuk membatalkan
+      barrierDismissible: true, 
       builder: (BuildContext context) {
         return AlertDialog(
           backgroundColor: AppColors.background,
@@ -53,7 +57,6 @@ class _HomeScreenState extends State<HomeScreen> {
             style: GoogleFonts.inter(fontSize: 14, color: AppColors.textGrey),
           ),
           actions: [
-            // Tombol "Batal" (No)
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
@@ -66,11 +69,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-            // Tombol "Ya, Keluar" (Yes)
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop(); // Tutup dialog
-                _handleLogout(); // Jalankan logic logout
+                Navigator.of(context).pop(); 
+                _handleLogout(); 
               },
               child: Text(
                 'Ya, Keluar',
@@ -89,7 +91,6 @@ class _HomeScreenState extends State<HomeScreen> {
   void _handleLogout() async {
     await _authService.signOut();
     if (mounted) {
-      // Membersihkan semua route dan kembali ke halaman Login
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (context) => const LoginScreen()),
@@ -106,7 +107,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
         return Scaffold(
           backgroundColor: AppColors.background,
-          // Memasang MonoAppBar baru yang sudah terintegrasi tombol logout di atas HomeScreen
           appBar: MonoAppBar(onLogoutPressed: _showLogoutDialog),
           body: Row(
             children: [
@@ -154,7 +154,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   color: AppColors.background,
                   child: ClipRRect(
-                    // Membuat bottom bar melayang (Floating effect)
                     borderRadius: BorderRadius.circular(24),
                     child: BottomNavigationBar(
                       currentIndex: _selectedIndex,
@@ -162,10 +161,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       backgroundColor: Colors.white,
                       selectedItemColor: AppColors.primary,
                       unselectedItemColor: Colors.grey[300],
-                      showSelectedLabels:
-                          true, // Menampilkan nama halaman saat aktif
-                      showUnselectedLabels:
-                          false, // Menyembunyikan nama halaman saat tidak aktif
+                      showSelectedLabels: true, 
+                      showUnselectedLabels: false, 
                       selectedLabelStyle: GoogleFonts.outfit(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,

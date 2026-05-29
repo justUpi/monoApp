@@ -7,8 +7,7 @@ import '../widgets/task_item.dart';
 import '../services/task_services.dart';
 
 class TasksScreen extends StatefulWidget {
-  final bool
-  isActive; // Parameter untuk mendeteksi apakah tab ini sedang aktif/terbuka
+  final bool isActive; // Parameter untuk mendeteksi apakah tab ini sedang aktif/terbuka
 
   const TasksScreen({super.key, this.isActive = false});
 
@@ -33,9 +32,7 @@ class _TasksScreenState extends State<TasksScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _loadData(
-      showSpinner: true,
-    ); // Pertama kali dibuka, tampilkan loading spinner
+    _loadData(showSpinner: true); // Pertama kali dibuka, tampilkan loading spinner
   }
 
   // Mendeteksi perubahan parameter dari HomeScreen secara otomatis saat berpindah tab
@@ -62,7 +59,8 @@ class _TasksScreenState extends State<TasksScreen>
       setState(() => _isLoading = true);
     }
     try {
-      final results = await _taskService.fetchTasks();
+      final results = await _taskService.fetchTasks(); 
+      
       if (mounted) {
         final List<dynamic> active = [];
         final List<dynamic> completed = [];
@@ -70,7 +68,6 @@ class _TasksScreenState extends State<TasksScreen>
         for (var task in results) {
           final dynamic rawCompleted = task['is_completed'];
 
-          // Pengecekan menyeluruh mencakup tipe boolean, integer, string, hingga karakter inisial postgres ('t')
           bool isDone = false;
           if (rawCompleted != null) {
             if (rawCompleted is bool) {
@@ -135,7 +132,7 @@ class _TasksScreenState extends State<TasksScreen>
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(text),
+        content: Text(text, style: GoogleFonts.inter(fontWeight: FontWeight.w500)),
         backgroundColor: backgroundColor,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -173,7 +170,7 @@ class _TasksScreenState extends State<TasksScreen>
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              'TASKS HUB',
+                              'QUEST HUB',
                               style: GoogleFonts.outfit(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w700,
@@ -209,9 +206,7 @@ class _TasksScreenState extends State<TasksScreen>
                         child: TabBar(
                           controller: _tabController,
                           labelColor: AppColors.primary,
-                          unselectedLabelColor: AppColors.textGrey.withOpacity(
-                            0.5,
-                          ),
+                          unselectedLabelColor: AppColors.textGrey.withOpacity(0.5),
                           indicatorColor: AppColors.primary,
                           indicatorSize: TabBarIndicatorSize.label,
                           dividerColor: Colors.transparent,
@@ -256,7 +251,7 @@ class _TasksScreenState extends State<TasksScreen>
     );
   }
 
-  Widget _buildTaskList(List<dynamic> taskSource, {required bool isHistory}) {
+Widget _buildTaskList(List<dynamic> taskSource, {required bool isHistory}) {
     if (taskSource.isEmpty) {
       return _buildEmptyState(isHistory);
     }
@@ -270,10 +265,14 @@ class _TasksScreenState extends State<TasksScreen>
         itemCount: taskSource.length,
         itemBuilder: (context, index) {
           final task = taskSource[index];
+          
+          // AMBIL DATA LEVEL DARI DATABASE (SUPABASE)
+          final int taskLevel = task['importance'] ?? task['importance_level'] ?? 1;
+
           return TaskItem(
                 title: task['title'] ?? 'Untitled Task',
-                isCompleted:
-                    isHistory, // Otomatis mencoret teks jika dirender di tab History
+                isCompleted: isHistory, // Otomatis mencoret teks jika dirender di tab History
+                importance: taskLevel,  // <--- TAMBAHKAN PARAMETER BARU INI
                 onTap: () {
                   // Kosong: Perubahan status dikunci, hanya bisa dari Focus Screen
                 },
@@ -301,8 +300,8 @@ class _TasksScreenState extends State<TasksScreen>
           const SizedBox(height: 14),
           Text(
             isHistory
-                ? 'No completed tasks yet.'
-                : 'All catch up! No pending tasks.',
+                ? 'No completed quests yet.'
+                : 'All caught up! No pending quests.',
             style: GoogleFonts.inter(
               color: AppColors.textGrey.withOpacity(0.4),
               fontSize: 13,
@@ -315,6 +314,9 @@ class _TasksScreenState extends State<TasksScreen>
   }
 
   void _showAddTaskSheet(BuildContext context) {
+    // FIX BUG: Reset pilihan tingkat kepentingan ke Level 1 setiap kali sheet dibuka kembali
+    setState(() => _selectedImportance = 1);
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -425,6 +427,7 @@ class _TasksScreenState extends State<TasksScreen>
                             ),
                           ),
                           onSelected: (selected) {
+                            // Mengubah state lokal modal sheet sekaligus state utama widget
                             setSheetState(() => _selectedImportance = level);
                           },
                         ),

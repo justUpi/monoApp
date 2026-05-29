@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mono/services/notification_services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/theme.dart';
 import 'core/constants.dart';
@@ -14,6 +15,8 @@ Future<void> main() async {
     url: AppConfig.supabaseUrl,
     anonKey: AppConfig.supabaseAnonKey,
   );
+
+  await NotificationService().initNotification();
 
   runApp(const MonoApp());
 }
