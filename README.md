@@ -37,7 +37,7 @@ Aplikasi ini dibangun menggunakan arsitektur yang bersih terpisah antara UI (*Pr
 
 1. **Klon Repositori ini**
    ```bash
-   git clone [LINK_REPOSITORI_GITHUB_ANDA]
+   git clone https://github.com/justUpi/monoApp.git
    cd monotasks-app
    ```
 
