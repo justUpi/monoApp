@@ -4,24 +4,27 @@ import 'package:google_fonts/google_fonts.dart';
 class TaskItem extends StatelessWidget {
   final String title;
   final bool isCompleted;
-  final int importance; // <--- Daftarkan variabel baru
+  final int importance;
   final VoidCallback onTap;
 
   const TaskItem({
     super.key,
     required this.title,
     required this.isCompleted,
-    this.importance = 1, // Default ke Level 1 jika tidak terisi
+    this.importance = 1,
     required this.onTap,
   });
 
-  // Helper untuk menentukan warna tema indikator level
   Color _getLevelColor(int level) {
     switch (level) {
-      case 1: return Colors.blueAccent;
-      case 2: return Colors.amber[700]!;
-      case 3: return Colors.redAccent;
-      default: return Colors.grey;
+      case 1:
+        return Colors.blueAccent;
+      case 2:
+        return Colors.amber[700]!;
+      case 3:
+        return Colors.redAccent;
+      default:
+        return Colors.grey;
     }
   }
 
@@ -35,10 +38,7 @@ class TaskItem extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: levelColor.withOpacity(0.12), // Border tipis sewarna level
-          width: 1,
-        ),
+        border: Border.all(color: levelColor.withOpacity(0.12), width: 1),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.015),
@@ -49,17 +49,15 @@ class TaskItem extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Ikon Radio Bulat di Kiri (Ikut warna level agar estetik)
           Icon(
-            isCompleted 
-                ? Icons.check_circle_rounded 
+            isCompleted
+                ? Icons.check_circle_rounded
                 : Icons.radio_button_unchecked_rounded,
             color: isCompleted ? Colors.grey[400] : levelColor.withOpacity(0.6),
             size: 22,
           ),
           const SizedBox(width: 14),
-          
-          // Judul Tugas (Quest Title)
+
           Expanded(
             child: Text(
               title,
@@ -74,11 +72,10 @@ class TaskItem extends StatelessWidget {
 
           const SizedBox(width: 8),
 
-          // KAPSUL INDIKATOR LEVEL DI SEBELAH KANAN
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
-              color: levelColor.withOpacity(0.08), // Warna latar soft transparan
+              color: levelColor.withOpacity(0.08),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text(

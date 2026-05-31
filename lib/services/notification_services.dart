@@ -31,7 +31,7 @@ class NotificationService {
 
     await _notificationsPlugin.initialize(initializationSettings);
 
-    // Tambahkan ini untuk me-request izin ke OS (Android & iOS)
+    // ini untuk me-request izin ke OS (Android & iOS)
     await requestPermissions();
   }
 

@@ -37,7 +37,6 @@ class MonoCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(26),
           child: Stack(
             children: [
-              // Aksen lingkaran background dekoratif khas kartu RPG
               Positioned(
                 top: -60,
                 right: -60,
@@ -55,7 +54,6 @@ class MonoCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Bagian Atas Kartu (Rank Badge & Pelindung/Shield)
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -95,7 +93,6 @@ class MonoCard extends StatelessWidget {
 
                     const Spacer(),
 
-                    // Konten Judul Tugas Utama di Tengah Kartu
                     Center(
                       child: Text(
                         text,
@@ -114,7 +111,6 @@ class MonoCard extends StatelessWidget {
 
                     const Spacer(),
 
-                    // Bagian Bawah Kartu (Status Quest & Petunjuk Gerakan)
                     Container(
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       decoration: BoxDecoration(

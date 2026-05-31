@@ -7,7 +7,8 @@ import '../widgets/task_item.dart';
 import '../services/task_services.dart';
 
 class TasksScreen extends StatefulWidget {
-  final bool isActive; // Parameter untuk mendeteksi apakah tab ini sedang aktif/terbuka
+  final bool
+  isActive; // Parameter untuk mendeteksi apakah tab ini sedang aktif/terbuka
 
   const TasksScreen({super.key, this.isActive = false});
 
@@ -32,7 +33,9 @@ class _TasksScreenState extends State<TasksScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _loadData(showSpinner: true); // Pertama kali dibuka, tampilkan loading spinner
+    _loadData(
+      showSpinner: true,
+    ); // Pertama kali dibuka, tampilkan loading spinner
   }
 
   // Mendeteksi perubahan parameter dari HomeScreen secara otomatis saat berpindah tab
@@ -59,8 +62,8 @@ class _TasksScreenState extends State<TasksScreen>
       setState(() => _isLoading = true);
     }
     try {
-      final results = await _taskService.fetchTasks(); 
-      
+      final results = await _taskService.fetchTasks();
+
       if (mounted) {
         final List<dynamic> active = [];
         final List<dynamic> completed = [];
@@ -132,7 +135,10 @@ class _TasksScreenState extends State<TasksScreen>
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(text, style: GoogleFonts.inter(fontWeight: FontWeight.w500)),
+        content: Text(
+          text,
+          style: GoogleFonts.inter(fontWeight: FontWeight.w500),
+        ),
         backgroundColor: backgroundColor,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -206,7 +212,9 @@ class _TasksScreenState extends State<TasksScreen>
                         child: TabBar(
                           controller: _tabController,
                           labelColor: AppColors.primary,
-                          unselectedLabelColor: AppColors.textGrey.withOpacity(0.5),
+                          unselectedLabelColor: AppColors.textGrey.withOpacity(
+                            0.5,
+                          ),
                           indicatorColor: AppColors.primary,
                           indicatorSize: TabBarIndicatorSize.label,
                           dividerColor: Colors.transparent,
@@ -251,7 +259,7 @@ class _TasksScreenState extends State<TasksScreen>
     );
   }
 
-Widget _buildTaskList(List<dynamic> taskSource, {required bool isHistory}) {
+  Widget _buildTaskList(List<dynamic> taskSource, {required bool isHistory}) {
     if (taskSource.isEmpty) {
       return _buildEmptyState(isHistory);
     }
@@ -265,14 +273,16 @@ Widget _buildTaskList(List<dynamic> taskSource, {required bool isHistory}) {
         itemCount: taskSource.length,
         itemBuilder: (context, index) {
           final task = taskSource[index];
-          
+
           // AMBIL DATA LEVEL DARI DATABASE (SUPABASE)
-          final int taskLevel = task['importance'] ?? task['importance_level'] ?? 1;
+          final int taskLevel =
+              task['importance'] ?? task['importance_level'] ?? 1;
 
           return TaskItem(
                 title: task['title'] ?? 'Untitled Task',
-                isCompleted: isHistory, // Otomatis mencoret teks jika dirender di tab History
-                importance: taskLevel,  // <--- TAMBAHKAN PARAMETER BARU INI
+                isCompleted:
+                    isHistory, // Otomatis mencoret teks jika dirender di tab History
+                importance: taskLevel,
                 onTap: () {
                   // Kosong: Perubahan status dikunci, hanya bisa dari Focus Screen
                 },

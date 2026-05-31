@@ -13,10 +13,9 @@ class TaskService {
           .from('tasks')
           .select()
           .eq('user_id', userId)
-          // REMOVED: .eq('is_completed', false) 
-          // We removed the filter so both active and history data can be processed by TasksScreen!
+          // REMOVED: .eq('is_completed', false)
           .order('id', ascending: false);
-          
+
       return response as List<dynamic>;
     } catch (e) {
       print('Error fetching tasks: $e');
@@ -35,8 +34,11 @@ class TaskService {
           .select()
           .eq('user_id', userId)
           .eq('importance', level)
-          .eq('is_completed', false); // Focus Screen tetap hanya mengambil tugas aktif
-          
+          .eq(
+            'is_completed',
+            false,
+          ); // Focus Screen tetap hanya mengambil tugas aktif
+
       return response as List<dynamic>;
     } catch (e) {
       print('Error fetching filtered tasks: $e');
@@ -58,7 +60,7 @@ class TaskService {
       }
 
       await _supabase.from('tasks').insert({
-        'title': title.trim(), 
+        'title': title.trim(),
         'importance': importance,
         'is_completed': false,
         'user_id': userId,
@@ -88,9 +90,9 @@ class TaskService {
       }
 
       final response = await query.eq('user_id', userId).select();
-      print('Hasil update Supabase: $response'); 
+      print('Hasil update Supabase: $response');
 
-      return response.isNotEmpty; 
+      return response.isNotEmpty;
     } catch (e) {
       print('Error completing task: $e');
       return false;

@@ -13,11 +13,9 @@ class MonoAppBar extends StatelessWidget implements PreferredSizeWidget {
     return AppBar(
       backgroundColor: Colors.transparent,
       elevation: 0,
-      scrolledUnderElevation:
-          0, // Mencegah perubahan warna background saat di-scroll
+      scrolledUnderElevation: 0,
       centerTitle: true,
       title: Padding(
-        // Sedikit padding atas agar posisi vertikalnya seimbang dan elegan
         padding: const EdgeInsets.only(top: 8.0),
         child: Text(
           'MONO',
