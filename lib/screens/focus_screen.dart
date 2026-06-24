@@ -177,30 +177,38 @@ class _FocusScreenState extends State<FocusScreen> {
   }
 
   // 3. UPDATE: Memicu pendaftaran jadwal notifikasi saat quest diterima
-  void _acceptQuest(String taskTitle) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_keyInQuest, true);
-    await prefs.setString(_keyQuestTask, taskTitle);
-    await prefs.setInt(
-      _keyQuestLevel,
-      _selectedLevel,
-    ); // Simpan level aktif ke shared preferences
+  // 1. Fungsi Utama: Langsung update UI tanpa menunggu
+  void _acceptQuest(String taskTitle) {
+    // Pindahkan setState ke paling atas agar perpindahan layar terjadi SEKETIKA
+    setState(() {
+      _activeQuestTask = taskTitle;
+      _screenState = 2; // Langsung tampilkan _buildActiveQuestView()
+    });
 
-    // JADWALKAN NOTIFIKASI SECARA OTOMATIS BERDASARKAN LEVEL
-    await _notificationService.scheduleQuestNotification(
-      questLevel: _selectedLevel,
-      questTitle: taskTitle,
-    );
+    // Panggil proses background (async) secara terpisah
+    _processQuestDataInBackground(taskTitle);
+  }
 
-    if (mounted) {
-      setState(() {
-        _activeQuestTask = taskTitle;
-        _screenState = 2;
-      });
+  // 2. Fungsi Background: Menangani penyimpanan & notifikasi
+  Future<void> _processQuestDataInBackground(String taskTitle) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_keyInQuest, true);
+      await prefs.setString(_keyQuestTask, taskTitle);
+      await prefs.setInt(_keyQuestLevel, _selectedLevel);
 
+      // Jadwalkan notifikasi
+      await _notificationService.scheduleQuestNotification(
+        questLevel: _selectedLevel,
+        questTitle: taskTitle,
+      );
+
+      // Getaran dijalankan setelah layar berpindah
       if (await Vibration.hasVibrator()) {
         Vibration.vibrate(pattern: [0, 40, 80, 40]);
       }
+    } catch (e) {
+      debugPrint('Error saat menyimpan sesi quest: $e');
     }
   }
 
@@ -377,7 +385,7 @@ class _FocusScreenState extends State<FocusScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 48),
+        const SizedBox(height: 16),
         _buildMoodRankCard(
           level: 1,
           title: 'CHILL FOCUS',
@@ -705,7 +713,7 @@ class _FocusScreenState extends State<FocusScreen> {
           ],
         ).animate().fadeIn(delay: 300.ms),
 
-        const SizedBox(height: 48),
+        const SizedBox(height: 16),
       ],
     );
   }
@@ -826,7 +834,7 @@ class _FocusScreenState extends State<FocusScreen> {
             color: AppColors.textGrey,
           ),
         ),
-        const SizedBox(height: 48),
+        const SizedBox(height: 16),
       ],
     );
   }
